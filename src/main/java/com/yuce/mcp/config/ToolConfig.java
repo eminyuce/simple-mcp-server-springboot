@@ -14,16 +14,11 @@ import java.util.List;
 @Configuration
 public class ToolConfig {
 
-    @Bean
-    public ToolCallbackProvider authorRepositoryTools(AuthorRepository authorRepository) {
-        return MethodToolCallbackProvider
-                .builder()
-                .toolObjects(authorRepository)
-                .build();
-    }
+
 
     @Bean
-    public ToolCallbackProvider weatherTools(WeatherService weatherService) {
-        return MethodToolCallbackProvider.builder().toolObjects(weatherService).build();
+    public ToolCallbackProvider tools(AuthorRepository authorRepository,
+                                      WeatherService weatherService) {
+        return MethodToolCallbackProvider.builder().toolObjects(authorRepository,weatherService).build();
     }
 }

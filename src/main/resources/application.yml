@@ -25,7 +25,7 @@ logging:
 
 management:
   server:
-    port: 8060  # Same as main app port, change if you want a separate actuator port
+    port: 8061  # Same as main app port, change if you want a separate actuator port
   endpoints:
     web:
       exposure:
