@@ -6,8 +6,7 @@ spring:
         name: simple-mcp-springboot
         version: 1.0.0
         type: SYNC
-        stdio:
-          enabled: false
+        stdio: false
         sse-message-endpoint: mcp/message
         sse-endpoint: sse
         capabilities:
@@ -21,7 +20,16 @@ server:
 
 logging:
   level:
-    org.springframework.ai: DEBUG
+    com:
+      yuce:
+        mcp: DEBUG
+    org:
+      springframework:
+        aop: DEBUG
+        security: TRACE
+        jpa: TRACE
+        ai: TRACE
+        ai.chat.client.advisor: DEBUG
 
 management:
   server:
