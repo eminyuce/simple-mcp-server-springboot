@@ -50,13 +50,7 @@ public class McpController {
 
         try {
             // Send initial tool list
-            List<Map<String, String>> tools = Arrays.stream(toolCallbackProvider.getToolCallbacks())
-                    .map(tool -> Map.of(
-                            "name", tool.getToolDefinition().name(),
-                            "description", tool.getToolDefinition().description(),
-                            "parameters", tool.getToolDefinition().inputSchema()
-                    ))
-                    .collect(Collectors.toList());
+            List<Map<String, String>> tools = getToolMetadata();
 
             String json = objectMapper.writeValueAsString(Map.of("tools", tools));
             emitter.send(SseEmitter.event()
