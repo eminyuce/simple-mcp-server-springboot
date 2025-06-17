@@ -1,0 +1,70 @@
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: simple-mcp-springboot
+        version: 1.0.0
+        type: SYNC
+        stdio:
+          enabled: false
+        sse-message-endpoint: mcp/message
+        sse-endpoint: sse
+        capabilities:
+          resource: true
+          tool: true
+          prompt: true
+          completion: true
+        request-timeout: 30s
+server:
+  port: 8060
+
+logging:
+  level:
+    org.springframework.ai: DEBUG
+
+management:
+  server:
+    port: 8060  # Same as main app port, change if you want a separate actuator port
+  endpoints:
+    web:
+      exposure:
+        include: "*"     # expose all endpoints (e.g. health, info, metrics)
+        exclude:         # optionally exclude some
+          - "env"
+      base-path: /actuator  # default path
+      cors:
+        allowed-origins: "*"
+        allowed-methods: "*"
+        allowed-headers: "*"
+  endpoint:
+    health:
+      show-details: always       # "never", "when-authorized", or "always"
+      probes:
+        enabled: true            # enables readiness/liveness probes
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+    shutdown:
+      enabled: true              # allows POST to /actuator/shutdown
+  health:
+    defaults:
+      enabled: true              # include default checks like disk, ping
+    diskspace:
+      enabled: true
+      threshold: 10MB            # minimum free disk space
+  info:
+    env:
+      enabled: true              # expose environment properties in /actuator/info
+  metrics:
+    export:
+      prometheus:
+        enabled: true            # enable Prometheus integration
+  observations:
+    key-values:
+      application: my-app        # add metadata to metrics
+
+app:
+  cors:
+    allowed-origin: http://localhost:8060
