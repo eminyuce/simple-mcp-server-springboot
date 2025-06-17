@@ -27,6 +27,8 @@ management:
   server:
     port: 8061  # Same as main app port, change if you want a separate actuator port
   endpoints:
+    mcp:
+      enabled: true
     web:
       exposure:
         include: "*"     # expose all endpoints (e.g. health, info, metrics)
