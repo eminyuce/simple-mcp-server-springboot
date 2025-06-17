@@ -11,12 +11,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ToolConfig {
 
-
-
     @Bean
     public ToolCallbackProvider tools(AuthorRepository authorRepository,
                                       WeatherService weatherService) {
-
         return MethodToolCallbackProvider
                 .builder()
                 .toolObjects(authorRepository,weatherService)
