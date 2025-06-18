@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -19,8 +18,8 @@ public class ToolController {
 
     private final ToolService toolService;
 
-    public ToolController(ToolService toolDispatcher) {
-        this.toolService = toolDispatcher;
+    public ToolController(ToolService toolService) {
+        this.toolService = toolService;
     }
 
     /**
