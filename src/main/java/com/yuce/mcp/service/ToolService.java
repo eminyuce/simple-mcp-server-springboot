@@ -2,8 +2,11 @@ package com.yuce.mcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yuce.mcp.model.ToolDefinition;
+import com.yuce.mcp.model.ToolRequest;
 import com.yuce.mcp.repo.AuthorRepository;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -15,7 +18,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
-public class ToolDispatcher {
+public class ToolService {
 
     private final ToolCallbackProvider toolCallbackProvider;
     private final WeatherService weatherService;
@@ -23,20 +26,19 @@ public class ToolDispatcher {
     private final ObjectMapper objectMapper;
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
-    public ToolDispatcher(ToolCallbackProvider toolCallbackProvider,
-                          WeatherService weatherService,
-                          AuthorRepository authorRepository,
-                          ObjectMapper objectMapper) {
+    public ToolService(ToolCallbackProvider toolCallbackProvider,
+                       WeatherService weatherService,
+                       AuthorRepository authorRepository,
+                       ObjectMapper objectMapper) {
         this.toolCallbackProvider = toolCallbackProvider;
         this.weatherService = weatherService;
         this.authorRepository=authorRepository;
         this.objectMapper = objectMapper;
     }
 
-    public void handleMessage(String message) {
+    public void executeTool(ToolRequest toolRequest) {
         try {
-            var node = objectMapper.readTree(message);
-            String action = node.path("action").asText(null);
+            String action = toolRequest.getTool();
 
             if (action == null) {
                 broadcastError("Missing 'action' field.");
@@ -44,9 +46,9 @@ public class ToolDispatcher {
             }
 
             switch (action) {
-                case "getWeather" -> handleGetWeather(node);
+                case "getWeather" -> handleGetWeather(toolRequest);
                 case "getTopAuthors" -> handleGetTopAuthors();
-                case "getAuthorByArticleTitle" -> handleGetAuthorByArticleTitle(node);
+                case "getAuthorByArticleTitle" -> handleGetAuthorByArticleTitle(toolRequest);
                 default -> broadcastError("Unsupported action: " + action);
             }
         } catch (Exception e) {
@@ -54,8 +56,8 @@ public class ToolDispatcher {
         }
     }
 
-    private void handleGetWeather(JsonNode node) throws IOException {
-        String city = node.path("city").asText(null);
+    private void handleGetWeather(ToolRequest toolRequest) throws IOException {
+        String city = toolRequest.getParameters().get("city");
         if (city == null) {
             broadcastError("Missing 'city' field for getWeather action.");
             return;
@@ -69,8 +71,8 @@ public class ToolDispatcher {
         broadcastToolResponse("getTopAuthors", result);
     }
 
-    private void handleGetAuthorByArticleTitle(JsonNode node) throws IOException {
-        String articleTitle = node.path("articleTitle").asText(null);
+    private void handleGetAuthorByArticleTitle(ToolRequest toolRequest) throws IOException {
+        String articleTitle = toolRequest.getParameters().get("articleTitle");
         if (articleTitle == null) {
             broadcastError("Missing 'articleTitle' field for getAuthorByArticleTitle action.");
             return;
@@ -123,7 +125,7 @@ public class ToolDispatcher {
 
         try {
             // Send initial tool list
-            List<Map<String, String>> tools = getToolMetadata();
+            var tools = getToolMetadata();
 
             String json = objectMapper.writeValueAsString(Map.of("tools", tools));
             emitter.send(SseEmitter.event()
@@ -135,14 +137,16 @@ public class ToolDispatcher {
 
         return emitter;
     }
-
-    public List<Map<String, String>> getToolMetadata() {
+    @Cacheable("tools")
+    public List<ToolDefinition> getToolMetadata() {
         return Arrays.stream(toolCallbackProvider.getToolCallbacks())
-                .map(tool -> Map.of(
-                        "name", tool.getToolDefinition().name(),
-                        "description", tool.getToolDefinition().description(),
-                        "parameters", tool.getToolDefinition().inputSchema()
-                ))
+                .map(tool -> {
+                    ToolDefinition definition = new ToolDefinition();
+                    definition.setName(tool.getToolDefinition().name());
+                    definition.setDescription(tool.getToolDefinition().description());
+                    definition.setInputSchema(tool.getToolDefinition().inputSchema());
+                    return definition;
+                })
                 .collect(Collectors.toList());
     }
 }

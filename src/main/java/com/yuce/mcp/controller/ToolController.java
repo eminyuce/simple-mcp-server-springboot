@@ -1,6 +1,8 @@
 package com.yuce.mcp.controller;
 
-import com.yuce.mcp.service.ToolDispatcher;
+import com.yuce.mcp.model.ToolDefinition;
+import com.yuce.mcp.model.ToolRequest;
+import com.yuce.mcp.service.ToolService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -8,17 +10,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/mcp")
 @Slf4j
-public class McpController {
+public class ToolController {
 
-    private final ToolDispatcher toolDispatcher;
+    private final ToolService toolService;
 
-    public McpController(ToolDispatcher toolDispatcher) {
-        this.toolDispatcher = toolDispatcher;
+    public ToolController(ToolService toolDispatcher) {
+        this.toolService = toolDispatcher;
     }
 
     /**
@@ -28,7 +29,7 @@ public class McpController {
     public ResponseEntity<SseEmitter> streamEvents() {
         try {
             log.info("Opening SSE stream for /mcp/message");
-            return ResponseEntity.ok(toolDispatcher.streamEvents());
+            return ResponseEntity.ok(toolService.streamEvents());
         } catch (Exception e) {
             log.error("Error while opening SSE stream", e);
             return ResponseEntity.internalServerError().build();
@@ -39,10 +40,10 @@ public class McpController {
      * REST endpoint to get tool metadata
      */
     @GetMapping("/tools")
-    public ResponseEntity<List<Map<String, String>>> getToolMetadata() {
+    public ResponseEntity<List<ToolDefinition>> getToolMetadata() {
         try {
             log.info("Fetching tool metadata");
-            List<Map<String, String>> tools = toolDispatcher.getToolMetadata();
+            var tools = toolService.getToolMetadata();
             return ResponseEntity.ok(tools);
         } catch (Exception e) {
             log.error("Failed to fetch tool metadata", e);
@@ -53,11 +54,11 @@ public class McpController {
     /**
      * Endpoint for tool invocation via message
      */
-    @PostMapping("/message")
-    public ResponseEntity<Void> handleMessage(@RequestBody String message) {
+    @PostMapping("/call")
+    public ResponseEntity<Void> callTool(@RequestBody ToolRequest request) {
         try {
-            log.info("Received message: {}", message);
-            toolDispatcher.handleMessage(message);
+            log.info("Received message: {}", request);
+            toolService.executeTool(request);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Failed to handle message", e);

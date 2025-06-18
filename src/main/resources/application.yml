@@ -1,3 +1,7 @@
+springdoc:
+  swagger-ui:
+    path: /swagger-ui/index.html
+
 spring:
   ai:
     mcp:
@@ -75,6 +79,14 @@ management:
     key-values:
       application: my-app        # add metadata to metrics
 
-app:
-  cors:
-    allowed-origin: http://localhost:8060
+feign:
+  client:
+    config:
+      default:
+        loggerLevel: basic
+  weather:
+    client:
+      url: http://localhost:8081/feign-demo/weather-client
+  stock:
+    client:
+      url: http://localhost:8081/feign-demo/stock-client
