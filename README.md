@@ -92,12 +92,4 @@ You can build an LLM app that:
 * MCP GitHub Code: [https://github.com/spring-projects/spring-ai/tree/main/spring-ai-mcp](https://github.com/spring-projects/spring-ai/tree/main/spring-ai-mcp)
 * Example with Ollama + MCP Server: [https://github.com/spring-projects/spring-ai/tree/main/spring-ai-examples/spring-ai-ollama-chat-mcp](https://github.com/spring-projects/spring-ai/tree/main/spring-ai-examples/spring-ai-ollama-chat-mcp)
 
----
 
-If you'd like, I can help you:
-
-* Build a minimal MCP server using Spring Boot
-* Define and expose tools
-* Connect it to a local LLM (like Ollama) or OpenAI/Groq
-
-Just let me know your goal.
