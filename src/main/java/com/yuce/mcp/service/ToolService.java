@@ -1,12 +1,13 @@
 package com.yuce.mcp.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yuce.mcp.model.ToolDefinition;
 import com.yuce.mcp.model.ToolRequest;
+import com.yuce.mcp.model.ToolResponse;
 import com.yuce.mcp.repo.AuthorRepository;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -24,7 +25,6 @@ public class ToolService {
     private final WeatherService weatherService;
     private final AuthorRepository authorRepository;
     private final ObjectMapper objectMapper;
-    private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     public ToolService(ToolCallbackProvider toolCallbackProvider,
                        WeatherService weatherService,
@@ -36,107 +36,61 @@ public class ToolService {
         this.objectMapper = objectMapper;
     }
 
-    public void executeTool(ToolRequest toolRequest) {
+    public ToolResponse executeTool(ToolRequest toolRequest) {
         try {
             String action = toolRequest.getTool();
-
-            if (action == null) {
-                broadcastError("Missing 'action' field.");
-                return;
+            if (action == null || action.isBlank()) {
+                return broadcastError("Missing or empty 'action' field.");
             }
-
-            switch (action) {
-                case "getWeather" -> handleGetWeather(toolRequest);
-                case "getTopAuthors" -> handleGetTopAuthors();
-                case "getAuthorByArticleTitle" -> handleGetAuthorByArticleTitle(toolRequest);
-                default -> broadcastError("Unsupported action: " + action);
+            // Normalize action string to avoid case issues if needed
+            switch (action.trim()) {
+                case "getWeather":
+                    return handleGetWeather(toolRequest);
+                case "getTopAuthors":
+                    return handleGetTopAuthors();
+                case "getAuthorByArticleTitle":
+                    return handleGetAuthorByArticleTitle(toolRequest);
+                default:
+                    return broadcastError("Unsupported action: " + action);
             }
         } catch (Exception e) {
-            broadcastError("Error processing message: " + e.getMessage());
+            return broadcastError("Error processing message: " + e.getMessage());
         }
     }
 
-    private void handleGetWeather(ToolRequest toolRequest) throws IOException {
-        String city = toolRequest.getParameters().get("city");
+    private ToolResponse handleGetWeather(ToolRequest toolRequest) throws IOException {
+        String city = toolRequest.getParameters().get("cityName");
         if (city == null) {
-            broadcastError("Missing 'city' field for getWeather action.");
-            return;
+            return  broadcastError("Missing 'city' field for getWeather action.");
         }
         String result = weatherService.getWeather(city);
-        broadcastToolResponse("getWeather", result);
+        return  broadcastToolResponse("getWeather", result);
     }
 
-    private void handleGetTopAuthors() throws IOException {
+    private ToolResponse handleGetTopAuthors() throws IOException {
         String result = objectMapper.writeValueAsString(authorRepository.getTopAuthors());
-        broadcastToolResponse("getTopAuthors", result);
+        return  broadcastToolResponse("getTopAuthors", result);
     }
 
-    private void handleGetAuthorByArticleTitle(ToolRequest toolRequest) throws IOException {
+    private ToolResponse handleGetAuthorByArticleTitle(ToolRequest toolRequest) throws IOException {
         String articleTitle = toolRequest.getParameters().get("articleTitle");
         if (articleTitle == null) {
-            broadcastError("Missing 'articleTitle' field for getAuthorByArticleTitle action.");
-            return;
+            return broadcastError("Missing 'articleTitle' field for getAuthorByArticleTitle action.");
         }
         String result = objectMapper.writeValueAsString(authorRepository.getAuthorByArticleTitle(articleTitle));
-        broadcastToolResponse("getAuthorByArticleTitle", result);
+        return broadcastToolResponse("getAuthorByArticleTitle", result);
     }
 
 
-    private void broadcastToolResponse(String tool, String result) {
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("tool-response")
-                        .data(objectMapper.writeValueAsString(Map.of("tool", tool, "result", result))));
-            } catch (IOException e) {
-                emitter.completeWithError(e);
-                emitters.remove(emitter);
-            }
-        }
+    private ToolResponse broadcastToolResponse(String tool, String result) {
+        return new ToolResponse(tool,result, HttpStatus.OK.value());
     }
 
-    private void broadcastError(String errorMessage) {
-        for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("error")
-                        .data(objectMapper.writeValueAsString(Map.of("error", errorMessage))));
-            } catch (IOException e) {
-                emitter.completeWithError(e);
-                emitters.remove(emitter);
-            }
-        }
+    private ToolResponse broadcastError(String errorMessage) {
+        return new ToolResponse("",errorMessage, HttpStatus.INTERNAL_SERVER_ERROR.value());
     }
 
-    public SseEmitter streamEvents() {
-        SseEmitter emitter = new SseEmitter(0L); // Set timeout to 0 (no timeout)
-        emitters.add(emitter);
 
-        // Clean up on completion or timeout
-        emitter.onCompletion(() -> emitters.remove(emitter));
-        emitter.onTimeout(() -> {
-            emitters.remove(emitter);
-            emitter.complete();
-        });
-        emitter.onError((throwable) -> {
-            emitters.remove(emitter);
-            emitter.completeWithError(throwable);
-        });
-
-        try {
-            // Send initial tool list
-            var tools = getToolMetadata();
-
-            String json = objectMapper.writeValueAsString(Map.of("tools", tools));
-            emitter.send(SseEmitter.event()
-                    .name("tool-list")
-                    .data(json));
-        } catch (IOException e) {
-            emitter.completeWithError(e);
-        }
-
-        return emitter;
-    }
     @Cacheable("tools")
     public List<ToolDefinition> getToolMetadata() {
         return Arrays.stream(toolCallbackProvider.getToolCallbacks())

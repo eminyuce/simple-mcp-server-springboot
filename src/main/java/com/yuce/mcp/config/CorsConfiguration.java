@@ -10,10 +10,12 @@ import static com.yuce.mcp.utils.Constants.ALLOWED_METHODS;
 @Configuration
 public class CorsConfiguration implements WebMvcConfigurer {
 
+    private String allowedOrigin="http://localhost:8061";
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("null", "*")
+                .allowedOrigins(allowedOrigin)
                 .allowedMethods(ALLOWED_METHODS)
                 .allowedHeaders("*")
                 .allowCredentials(true); // If credentials are needed
