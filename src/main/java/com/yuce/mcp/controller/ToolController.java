@@ -25,11 +25,11 @@ public class ToolController {
     /**
      * REST endpoint to get tool metadata
      */
-    @GetMapping(value = "/tools", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ToolDefinition>> getToolMetadata() {
+    @GetMapping(value = "/tools", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<ToolDefinition>> getToolMetadata(@RequestParam String format) {
         try {
             log.info("Fetching tool metadata");
-            var tools = toolService.getToolMetadata();
+            var tools = toolService.getToolMetadata(format);
             return ResponseEntity.ok(tools);
         } catch (Exception e) {
             log.error("Failed to fetch tool metadata", e);

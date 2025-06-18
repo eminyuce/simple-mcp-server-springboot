@@ -13,5 +13,6 @@ public class ToolDefinition {
     private String name;
     private String description;
     private String inputSchema; // Using a Map to represent JSON Schema
+    private String parameters;
     // Getters and Setters
 }

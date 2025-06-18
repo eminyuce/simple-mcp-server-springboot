@@ -92,15 +92,27 @@ public class ToolService {
 
 
     @Cacheable("tools")
-    public List<ToolDefinition> getToolMetadata() {
-        return Arrays.stream(toolCallbackProvider.getToolCallbacks())
-                .map(tool -> {
-                    ToolDefinition definition = new ToolDefinition();
-                    definition.setName(tool.getToolDefinition().name());
-                    definition.setDescription(tool.getToolDefinition().description());
-                    definition.setInputSchema(tool.getToolDefinition().inputSchema());
-                    return definition;
-                })
-                .collect(Collectors.toList());
+    public List<ToolDefinition> getToolMetadata(String format) {
+        if(format == "openai"){
+            return Arrays.stream(toolCallbackProvider.getToolCallbacks())
+                    .map(tool -> {
+                        ToolDefinition definition = new ToolDefinition();
+                        definition.setName(tool.getToolDefinition().name());
+                        definition.setDescription(tool.getToolDefinition().description());
+                        definition.setParameters(tool.getToolDefinition().inputSchema());
+                        return definition;
+                    })
+                    .collect(Collectors.toList());
+        }else{
+            return Arrays.stream(toolCallbackProvider.getToolCallbacks())
+                    .map(tool -> {
+                        ToolDefinition definition = new ToolDefinition();
+                        definition.setName(tool.getToolDefinition().name());
+                        definition.setDescription(tool.getToolDefinition().description());
+                        definition.setInputSchema(tool.getToolDefinition().inputSchema());
+                        return definition;
+                    })
+                    .collect(Collectors.toList());
+        }
     }
 }
