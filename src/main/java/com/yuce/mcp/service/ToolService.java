@@ -90,29 +90,24 @@ public class ToolService {
         return new ToolResponse("",errorMessage, HttpStatus.INTERNAL_SERVER_ERROR.value());
     }
 
-
-    @Cacheable("tools")
+    @Cacheable(value = "tools", key = "#format != null ? #format.toLowerCase() : 'default'")
     public List<ToolDefinition> getToolMetadata(String format) {
-        if(format == "openai"){
-            return Arrays.stream(toolCallbackProvider.getToolCallbacks())
-                    .map(tool -> {
-                        ToolDefinition definition = new ToolDefinition();
-                        definition.setName(tool.getToolDefinition().name());
-                        definition.setDescription(tool.getToolDefinition().description());
+        boolean isOpenAI = "openai".equalsIgnoreCase(format);
+
+        return Arrays.stream(toolCallbackProvider.getToolCallbacks())
+                .map(tool -> {
+                    ToolDefinition definition = new ToolDefinition();
+                    definition.setName(tool.getToolDefinition().name());
+                    definition.setDescription(tool.getToolDefinition().description());
+
+                    if (isOpenAI) {
                         definition.setParameters(tool.getToolDefinition().inputSchema());
-                        return definition;
-                    })
-                    .collect(Collectors.toList());
-        }else{
-            return Arrays.stream(toolCallbackProvider.getToolCallbacks())
-                    .map(tool -> {
-                        ToolDefinition definition = new ToolDefinition();
-                        definition.setName(tool.getToolDefinition().name());
-                        definition.setDescription(tool.getToolDefinition().description());
+                    } else {
                         definition.setInputSchema(tool.getToolDefinition().inputSchema());
-                        return definition;
-                    })
-                    .collect(Collectors.toList());
-        }
+                    }
+
+                    return definition;
+                })
+                .collect(Collectors.toList());
     }
 }

@@ -2,13 +2,12 @@ package com.yuce.mcp.model;
 
 import lombok.*;
 
-import java.util.Map;
-
 @Getter
 @Setter
 @ToString
 @EqualsAndHashCode
 @NoArgsConstructor
+@RequiredArgsConstructor
 public class ToolDefinition {
     private String name;
     private String description;
