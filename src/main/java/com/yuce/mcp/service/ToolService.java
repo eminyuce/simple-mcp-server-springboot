@@ -1,5 +1,6 @@
 package com.yuce.mcp.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yuce.mcp.model.ToolDefinition;
 import com.yuce.mcp.model.ToolRequest;
@@ -99,11 +100,18 @@ public class ToolService {
                     ToolDefinition definition = new ToolDefinition();
                     definition.setName(tool.getToolDefinition().name());
                     definition.setDescription(tool.getToolDefinition().description());
+                    String inputSchema = tool.getToolDefinition().inputSchema();
 
                     if (isOpenAI) {
-                        definition.setParameters(tool.getToolDefinition().inputSchema());
+                        try {
+                            // Convert JSON string into a structured map (so it's not returned as a string)
+                            Map<String, Object> parameters = objectMapper.readValue(inputSchema, new TypeReference<>() {});
+                            definition.setParameters(parameters);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to parse inputSchema for tool: " + tool.getToolDefinition().name(), e);
+                        }
                     } else {
-                        definition.setInputSchema(tool.getToolDefinition().inputSchema());
+                        definition.setInputSchema(inputSchema); // raw JSON string
                     }
 
                     return definition;

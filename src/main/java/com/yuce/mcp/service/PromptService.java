@@ -3,19 +3,24 @@ package com.yuce.mcp.service;
 import com.yuce.mcp.model.PromptResponse;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Service
 public class PromptService {
 
     private final ResourcePatternResolver resourcePatternResolver;
+    private final ConcurrentMap<String, PromptResponse> promptsCache = new ConcurrentHashMap<>();
+    private long lastModified = 0;
 
-    // Inject ResourcePatternResolver instead of ResourceLoader
     public PromptService(ResourcePatternResolver resourcePatternResolver) {
         this.resourcePatternResolver = resourcePatternResolver;
     }
@@ -28,21 +33,50 @@ public class PromptService {
      * @throws IOException if the resources cannot be read.
      */
     public List<PromptResponse> getPrompts() throws IOException {
-        List<PromptResponse> prompts = new ArrayList<>();
+        // Check if the file has been modified
+        if (hasFileBeenModified()) {
+            reloadPrompts();
+        }
+        return new ArrayList<>(promptsCache.values());
+    }
 
-        // Use a pattern to find all files in the prompts directory
+    /**
+     * Reloads the prompts from the file.
+     *
+     * @throws IOException if an I/O error occurs.
+     */
+    private void reloadPrompts() throws IOException {
+        promptsCache.clear();
         Resource[] resources = resourcePatternResolver.getResources("classpath:prompts/*.*");
-
         for (Resource resource : resources) {
             String filename = resource.getFilename();
-            if (filename != null) {
-                // Use the filename (without extension) as the attribute name
+            if (filename!= null) {
                 String promptName = removeFileExtension(filename);
                 String promptContent = readContentFromResource(resource);
-                prompts.add(new PromptResponse(promptName, promptContent));
+                promptsCache.put(promptName, new PromptResponse(promptName, promptContent));
             }
         }
-        return prompts;
+        lastModified = System.currentTimeMillis();
+    }
+
+    /**
+     * Checks if the file has been modified since the last reload.
+     *
+     * @return True if the file has been modified, false otherwise.
+     */
+    private boolean hasFileBeenModified() {
+        try {
+            Resource[] resources = resourcePatternResolver.getResources("classpath:prompts/*.*");
+            for (Resource resource : resources) {
+                File file = resource.getFile();
+                if (file.lastModified() > lastModified) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            // Handle exception
+        }
+        return false;
     }
 
     /**
@@ -72,5 +106,12 @@ public class PromptService {
             return filename; // No extension found
         }
         return filename.substring(0, lastIndexOfDot);
+    }
+
+    @Scheduled(fixedDelay = 10000) // Check every 10 seconds
+    private void scheduledReload() throws IOException {
+        if (hasFileBeenModified()) {
+            reloadPrompts();
+        }
     }
 }
